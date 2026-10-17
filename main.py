@@ -18,4 +18,4 @@ async def on_ready():
 async def ping(ctx):
     await ctx.send("Pong! 🏓")
 
-bot.run(os.getenv("OTgzMDkxMzc1NDAwNjk3ODY3.GiSZfj.N802HhF3isuOG6vs2Lvszl2YxHIEZSjCpJEMgQ"))
+bot.run(os.getenv("TOKEN"))
