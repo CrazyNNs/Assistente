@@ -3,6 +3,8 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
+bot = commands.Bot(command_prefix="!", intents=intents)
+
 load_dotenv()
 
 token = os.getenv("TOKEN")
