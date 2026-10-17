@@ -5,17 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-intents = discord.Intents.default()
-intents.message_content = True
+token = os.getenv("TOKEN")
 
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-@bot.event
-async def on_ready():
-    print(f"Logado como {bot.user}")
-
-@bot.command()
-async def ping(ctx):
-    await ctx.send("Pong! 🏓")
-
-bot.run(os.getenv("TOKEN"))
+if token is None:
+    print("ERRO: A variável TOKEN não foi encontrada!")
+elif not token.strip():
+    print("ERRO: A variável TOKEN está vazia!")
+else:
+    print("TOKEN encontrado!")
+    bot.run(token)
