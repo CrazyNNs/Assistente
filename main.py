@@ -3,10 +3,10 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+
 
 load_dotenv()
-
+bot = commands.Bot(command_prefix="!", intents=intents)
 token = os.getenv("TOKEN")
 
 if token is None:
