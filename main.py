@@ -604,28 +604,28 @@ async def on_ready():
     print(f"✅ Bot conectado como {bot.user}")
     print(f"🔶 Prefixo: {PREFIX}")
 
-if not verificar_lembretes.is_running():
-    verificar_lembretes.start()
-    
     if not comandos_sincronizados:
         try:
             comandos = await bot.tree.sync()
             comandos_sincronizados = True
             print(f"✅ {len(comandos)} comandos slash sincronizados.")
         except discord.HTTPException as erro:
-            print(f"Erro ao sincronizar comandos: {erro}")
+            print(f"❌ Erro ao sincronizar comandos: {erro}")
 
-if not calendario_view_registrado:
-    for pagina in range(7):
-        bot.add_view(
-            CalendarioView(
-                guild_id=None,
-                pagina=pagina
+    if not calendario_view_registrado:
+        for pagina in range(7):
+            bot.add_view(
+                CalendarioView(
+                    guild_id=None,
+                    pagina=pagina
+                )
             )
-        )
 
-    calendario_view_registrado = True
-    print("✅ Botões persistentes das 7 páginas registrados.")
+        calendario_view_registrado = True
+        print("✅ Botões persistentes do calendário registrados.")
+
+    if not verificar_lembretes.is_running():
+        verificar_lembretes.start()
 # ==========================================
 # COMANDO TRADICIONAL PING
 # ==========================================
