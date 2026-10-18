@@ -268,9 +268,8 @@ embed.add_field(
     value=f"{EMOJIS_PRIORIDADE[prioridade]} {prioridade}",
     inline=True
 )
-    if evento.get("imagem"):
-        embed.set_image(url=evento["imagem"])
-
+if evento.get("imagem"):
+    embed.set_image(url=evento["imagem"])
     if lembrete:
         embed.add_field(
             name="🔔 Aviso",
