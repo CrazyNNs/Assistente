@@ -604,6 +604,9 @@ async def on_ready():
     print(f"✅ Bot conectado como {bot.user}")
     print(f"🔶 Prefixo: {PREFIX}")
 
+    if not verificar_lembretes.is_running():
+        verificar_lembretes.start()
+    
     if not comandos_sincronizados:
         try:
             comandos = await bot.tree.sync()
@@ -623,11 +626,6 @@ if not calendario_view_registrado:
 
     calendario_view_registrado = True
     print("✅ Botões persistentes das 7 páginas registrados.")
-
-    if not verificar_lembretes.is_running():
-        verificar_lembretes.start()
-
-
 # ==========================================
 # COMANDO TRADICIONAL PING
 # ==========================================
@@ -885,7 +883,7 @@ async def verificar_lembretes():
 
             data_hora = datetime.fromisoformat(evento["data_hora"])
 
-            # Eventos que já terminaram não precisam de lembrete
+            # Eventos que já passaram não recebem lembrete atrasado.
             if data_hora <= agora:
                 evento["lembrete_enviado"] = True
                 evento["estado"] = "expirado"
@@ -915,27 +913,22 @@ async def verificar_lembretes():
                     evento["estado"] = "lembrete_enviado"
                     alterado = True
 
-                    print(
-                        f"🔔 Lembrete enviado: {evento['nome']}"
-                    )
+                    print(f"🔔 Lembrete enviado: {evento['nome']}")
 
                 except discord.NotFound:
-                    # O canal foi removido
                     evento["lembrete_enviado"] = True
                     evento["estado"] = "canal_indisponivel"
                     alterado = True
 
                 except discord.Forbidden:
-                    # Não há permissão para enviar no canal
                     print(
-                        f"Sem permissão para enviar lembrete: "
+                        f"Sem permissão para enviar o lembrete: "
                         f"{evento['nome']}"
                     )
 
                 except discord.HTTPException as erro:
-                    # Mantém pendente para tentar novamente
                     print(
-                        f"Falha ao enviar lembrete de {evento['nome']}: "
+                        f"Erro ao enviar lembrete de {evento['nome']}: "
                         f"{erro}"
                     )
 
@@ -946,7 +939,6 @@ async def verificar_lembretes():
 @verificar_lembretes.before_loop
 async def antes_dos_lembretes():
     await bot.wait_until_ready()
-
 
 # ==========================================
 # INICIALIZAÇÃO
