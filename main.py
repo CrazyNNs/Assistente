@@ -1,24 +1,43 @@
 
 import os
+import json
+import asyncio
+from pathlib import Path
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
+from discord import app_commands
 from dotenv import load_dotenv
 
 
-# ==============================
+# ==========================================
 # CONFIGURAÇÕES
-# ==============================
+# ==========================================
 
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
-PREFIX = "A."
+PREFIX = "!"
+
+# Cargo autorizado a criar eventos
+CARGO_AUTORIZADO_ID = 1535058525334540299
+
+# Fuso horário de Brasília
+FUSO = ZoneInfo("America/Sao_Paulo")
+
+# Arquivo onde os eventos serão guardados
+ARQUIVO_EVENTOS = Path(__file__).with_name("eventos.json")
+
+# Intervalo de verificação dos lembretes
+INTERVALO_VERIFICACAO_SEGUNDOS = 20
 
 
-# ==============================
-# INTENTS E CONFIGURAÇÃO DO BOT
-# ==============================
+# ==========================================
+# INTENTS E BOT
+# ==========================================
+
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -33,9 +52,11 @@ comandos_sincronizados = False
 # Evita acessos simultâneos ao arquivo
 bloqueio_arquivo = asyncio.Lock()
 
+
 # ==========================================
 # ARMAZENAMENTO DOS EVENTOS
 # ==========================================
+
 def carregar_eventos():
     """Carrega os eventos salvos no arquivo JSON."""
     if not ARQUIVO_EVENTOS.exists():
@@ -65,9 +86,12 @@ def salvar_eventos(eventos):
         )
 
     os.replace(arquivo_temporario, ARQUIVO_EVENTOS)
+
+
 # ==========================================
 # UTILITÁRIOS
 # ==========================================
+
 def criar_embed(evento, lembrete=False):
     """Monta o embed de divulgação ou lembrete."""
     data_evento = datetime.fromisoformat(evento["data_hora"])
@@ -115,9 +139,12 @@ def criar_embed(evento, lembrete=False):
     embed.set_footer(text=f"Evento ID: {evento['id']}")
 
     return embed
-# ==============================
-# EVENTOS
-# ==============================
+
+
+# ==========================================
+# EVENTOS DO BOT
+# ==========================================
+
 @bot.event
 async def on_ready():
     global comandos_sincronizados
@@ -137,17 +164,22 @@ async def on_ready():
 
     if not verificar_lembretes.is_running():
         verificar_lembretes.start()
-# ==============================
-# COMANDOS
-# ==============================
+
+
+# ==========================================
+# COMANDO TRADICIONAL PING
+# ==========================================
 
 @bot.command(name="ping")
 async def ping(ctx):
     """Verifica a latência básica do bot."""
     await ctx.send("Pong! 🏓")
+
+
 # ==========================================
 # COMANDO SLASH /MARCAR
 # ==========================================
+
 @bot.tree.command(
     name="marcar",
     description="Cria um evento com lembrete automático."
@@ -168,7 +200,7 @@ async def marcar(
     descricao: str,
     imagem: discord.Attachment | None = None
 ):
-# --------------------------------------
+    # --------------------------------------
     # Verificação de permissão
     # --------------------------------------
 
@@ -424,25 +456,30 @@ async def verificar_lembretes():
 @verificar_lembretes.before_loop
 async def antes_dos_lembretes():
     await bot.wait_until_ready()
-# ==============================
+
+
+# ==========================================
 # INICIALIZAÇÃO
-# ==============================
+# ==========================================
+
 def main():
     if not TOKEN or not TOKEN.strip():
         print("ERRO: TOKEN não encontrado ou vazio!")
-        print("Verifique se o arquivo .env existe e contém TOKEN=seu_token")
+        print("Verifique se o arquivo .env contém TOKEN=seu_token")
         return
 
     print("TOKEN encontrado! Iniciando o bot...")
 
     try:
-        bot.run(TOKEN)
+        bot.run(TOKEN.strip())
+
     except discord.LoginFailure:
-        print("ERRO: Token inválido. Verifique o TOKEN no arquivo .env.")
+        print("ERRO: Token inválido. Verifique o arquivo .env.")
+
     except discord.PrivilegedIntentsRequired:
         print(
             "ERRO: Intents privilegiados necessários. "
-            "Verifique as configurações no Discord Developer Portal."
+            "Verifique o Discord Developer Portal."
         )
 
 
