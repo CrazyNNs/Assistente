@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import re
 from pathlib import Path
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -671,6 +672,7 @@ async def calendario(ctx):
     horario="Horário no formato HH/MM (ex.: 20/30)",
     nome="Nome do evento",
     descricao="Descrição do evento",
+    mencionar="Mencione os usuários que receberão o lembrete (opcional)",
     imagem="Imagem opcional do evento (anexo)"
 )
 @app_commands.choices(
@@ -688,6 +690,7 @@ async def marcar(
     nome: str,
     descricao: str,
     prioridade: app_commands.Choice[str],
+    mencionar: str = None,
     imagem: discord.Attachment | None = None
 ):
     # --------------------------------------
@@ -762,7 +765,30 @@ async def marcar(
             ephemeral=True
         )
         return
+        
+    # --------------------------------------
+    # Validação das menções
+    # --------------------------------------
+if len(set(ids_encontrados)) > 4:
+        await interaction.response.send_message(
+            "❌ Você pode mencionar no máximo 4 usuários por evento.",
+            ephemeral=True
+        )
+        return
 
+    for user_id in set(ids_encontrados):
+        membro = interaction.guild.get_member(int(user_id))
+
+        if membro is not None:
+            ids_mencionar.append(membro.id)
+
+    if len(ids_mencionar) != len(set(ids_encontrados)):
+        await interaction.response.send_message(
+            "❌ Um ou mais usuários mencionados não foram encontrados "
+            "neste servidor.",
+            ephemeral=True
+        )
+        return
     # --------------------------------------
     # Validação dos campos de texto
     # --------------------------------------
@@ -806,18 +832,19 @@ async def marcar(
 
     await interaction.response.defer(ephemeral=True)
 
-    evento = {
-        "id": str(interaction.id),
-        "guild_id": interaction.guild_id,
-        "canal_id": interaction.channel_id,
-        "criador_id": membro.id,
-        "nome": nome,
-        "descricao": descricao,
-        "imagem": imagem_url,
-        "data_hora": data_hora.isoformat(),
-        "lembrete_enviado": False,
-        "prioridade": prioridade.value
-    }
+evento = {
+    "id": str(interaction.id),
+    "guild_id": interaction.guild_id,
+    "canal_id": interaction.channel_id,
+    "criador_id": interaction.user.id,
+    "nome": nome,
+    "descricao": descricao,
+    "imagem": imagem_url,
+    "prioridade": prioridade.value,
+    "usuarios_mencionar": ids_mencionar,
+    "data_hora": data_hora.isoformat(),
+    "lembrete_enviado": False
+}
 
     try:
         async with bloqueio_arquivo:
@@ -903,15 +930,23 @@ async def verificar_lembretes():
                         canal = await bot.fetch_channel(
                             int(evento["canal_id"])
                         )
+                        
+usuarios = evento.get("usuarios_mencionar", [])
 
-                    await canal.send(
-                        content="@everyone",
-                        embed=criar_embed(evento, lembrete=True),
-                        allowed_mentions=discord.AllowedMentions(
-                            everyone=True
-                        )
-                    )
+mencoes = " ".join(
+    f"<@{user_id}>"
+    for user_id in usuarios
+)
 
+await canal.send(
+    content=mencoes if mencoes else None,
+    embed=criar_embed(evento, lembrete=True),
+    allowed_mentions=discord.AllowedMentions(
+        users=True,
+        everyone=False,
+        roles=False
+    )
+)
                     evento["lembrete_enviado"] = True
                     evento["estado"] = "lembrete_enviado"
                     alterado = True
