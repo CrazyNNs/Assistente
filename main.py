@@ -1,4 +1,3 @@
-
 import os
 import json
 import asyncio
@@ -231,6 +230,7 @@ def montar_texto_calendario(eventos, guild_id):
 
 def criar_embed(evento, lembrete=False):
     """Monta o embed de divulgação ou lembrete."""
+
     data_evento = datetime.fromisoformat(evento["data_hora"])
 
     embed = discord.Embed(
@@ -240,8 +240,11 @@ def criar_embed(evento, lembrete=False):
             else f"📅 {evento['nome']}"
         ),
         description=evento["descricao"],
-        color=discord.Color.orange() if lembrete
-        else discord.Color.blurple(),
+        color=(
+            discord.Color.orange()
+            if lembrete
+            else discord.Color.blurple()
+        ),
         timestamp=data_evento
     )
 
@@ -263,25 +266,27 @@ def criar_embed(evento, lembrete=False):
         inline=True
     )
 
-prioridade = obter_prioridade(evento)
+    prioridade = obter_prioridade(evento)
 
-embed.add_field(
-    name="🚦 Prioridade",
-    value=f"{EMOJIS_PRIORIDADE[prioridade]} {prioridade}",
-    inline=True
-)
+    embed.add_field(
+        name="🚦 Prioridade",
+        value=f"{EMOJIS_PRIORIDADE[prioridade]} {prioridade}",
+        inline=True
+    )
 
-if evento.get("imagem"):
-    embed.set_image(url=evento["imagem"])
+    if evento.get("imagem"):
+        embed.set_image(url=evento["imagem"])
+
     if lembrete:
         embed.add_field(
             name="🔔 Aviso",
             value="Este evento começará em aproximadamente 1 hora!",
             inline=False
         )
-        embed.set_footer(text=f"Evento ID: {evento['id']}")
-        
-        return embed
+
+    embed.set_footer(text=f"Evento ID: {evento['id']}")
+
+    return embed
 
 # ==========================================
 # BOTÕES
