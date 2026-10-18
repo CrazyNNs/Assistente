@@ -35,11 +35,8 @@ bot = commands.Bot(
 
 @bot.event
 async def on_ready():
-    print("=" * 35)
-    print(f"Bot conectado: {bot.user}")
-    print(f"ID do bot: {bot.user.id}")
-    print(f"Prefixo: {PREFIX}")
-    print("=" * 35)
+    print(f"✅ Bot conectado!")
+    print(f"🔶 Prefixo: {PREFIX}")
 
 
 # ==============================
