@@ -604,8 +604,8 @@ async def on_ready():
     print(f"✅ Bot conectado como {bot.user}")
     print(f"🔶 Prefixo: {PREFIX}")
 
-    if not verificar_lembretes.is_running():
-        verificar_lembretes.start()
+if not verificar_lembretes.is_running():
+    verificar_lembretes.start()
     
     if not comandos_sincronizados:
         try:
