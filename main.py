@@ -59,6 +59,8 @@ EMOJIS_PRIORIDADE = {
     "Média": "🟡",
     "Baixa": "🟢",
 }
+
+calendario_view_registrado = False
 # ==========================================
 # INTENTS E BOT
 # ==========================================
@@ -268,6 +270,7 @@ embed.add_field(
     value=f"{EMOJIS_PRIORIDADE[prioridade]} {prioridade}",
     inline=True
 )
+
 if evento.get("imagem"):
     embed.set_image(url=evento["imagem"])
     if lembrete:
@@ -276,10 +279,9 @@ if evento.get("imagem"):
             value="Este evento começará em aproximadamente 1 hora!",
             inline=False
         )
-
-    embed.set_footer(text=f"Evento ID: {evento['id']}")
-
-    return embed
+        embed.set_footer(text=f"Evento ID: {evento['id']}")
+        
+        return embed
 
 # ==========================================
 # BOTÕES
@@ -527,15 +529,13 @@ class ConfirmarExclusaoView(discord.ui.View):
             content="❎ Exclusão cancelada. O evento foi mantido.",
             view=self
         )
-
-calendario_view_registrado = False
 # ==========================================
 # EVENTOS DO BOT
 # ==========================================
 
 @bot.event
 async def on_ready():
-    global comandos_sincronizados
+    global comandos_sincronizados, calendario_view_registrado
 
     print(f"✅ Bot conectado como {bot.user}")
     print(f"🔶 Prefixo: {PREFIX}")
@@ -544,9 +544,7 @@ async def on_ready():
         try:
             comandos = await bot.tree.sync()
             comandos_sincronizados = True
-
             print(f"✅ {len(comandos)} comandos slash sincronizados.")
-
         except discord.HTTPException as erro:
             print(f"Erro ao sincronizar comandos: {erro}")
 
