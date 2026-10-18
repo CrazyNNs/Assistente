@@ -133,97 +133,83 @@ def evento_ativo(evento):
     )
 
 
-def montar_texto_calendario(eventos, guild_id):
-    eventos_guild = [
+def montar_texto_calendario(eventos, guild_id, pagina=0):
+    """Monta a tabela e os eventos de um único dia da semana."""
+
+    eventos_dia = [
         evento
         for evento in eventos
         if int(evento.get("guild_id") or 0) == guild_id
         and evento_ativo(evento)
+        and obter_data_evento(evento).weekday() == pagina
     ]
 
-    eventos_guild.sort(key=obter_data_evento)
+    eventos_dia.sort(key=obter_data_evento)
 
-    # A chave da tabela é prioridade + dia da semana.
     agrupados = {
-        prioridade: {dia: [] for dia in range(7)}
+        prioridade: []
         for prioridade in ORDEM_PRIORIDADES
     }
 
-    for evento in eventos_guild:
-        data = obter_data_evento(evento)
-        prioridade = obter_prioridade(evento)
-        agrupados[prioridade][data.weekday()].append(evento)
+    for evento in eventos_dia:
+        agrupados[obter_prioridade(evento)].append(evento)
 
-    # Cabeçalho compacto: sete dias, de segunda a domingo.
-    abreviacoes = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
-    largura_celula = 5
-    largura_prioridade = 9
+    dia_nome = DIAS_SEMANA[pagina]
 
-    cabecalho = (
-        f"{'Prioridade':<{largura_prioridade}}"
-        + "".join(f"{dia:^{largura_celula}}" for dia in abreviacoes)
-    )
-
-    separador = "-" * len(cabecalho)
-    linhas = [cabecalho, separador]
+    linhas = [
+        f"Prioridade | {dia_nome}",
+        "----------------------"
+    ]
 
     for prioridade in ORDEM_PRIORIDADES:
-        celulas = []
-
-        for dia in range(7):
-            quantidade = len(agrupados[prioridade][dia])
-            texto = str(quantidade) if quantidade else "-"
-            celulas.append(f"{texto:^{largura_celula}}")
+        quantidade = len(agrupados[prioridade])
 
         linhas.append(
-            f"{prioridade:<{largura_prioridade}}"
-            + "".join(celulas)
+            f"{EMOJIS_PRIORIDADE[prioridade]} "
+            f"{prioridade} | {quantidade} evento(s)"
         )
 
-    tabela = "```\n" + "\n".join(linhas) + "\n```"
+    tabela = "```text\n" + "\n".join(linhas) + "\n```"
 
-    # Relação dos eventos, agrupados por prioridade e dia.
     detalhes = []
 
     for prioridade in ORDEM_PRIORIDADES:
-        tem_eventos = any(agrupados[prioridade][dia] for dia in range(7))
+        lista = agrupados[prioridade]
 
-        if not tem_eventos:
+        if not lista:
             continue
 
         detalhes.append(
             f"\n{EMOJIS_PRIORIDADE[prioridade]} **{prioridade}**"
         )
 
-        for dia in range(7):
-            lista_dia = agrupados[prioridade][dia]
+        for evento in lista:
+            data = obter_data_evento(evento)
 
-            if not lista_dia:
-                continue
+            detalhes.append(
+                f"• `{data:%d/%m/%Y %H:%M}` — "
+                f"**{evento['nome']}**"
+            )
 
-            detalhes.append(f"**{DIAS_SEMANA[dia]}**")
+            descricao = evento.get("descricao", "").strip()
 
-            for evento in lista_dia:
-                data = obter_data_evento(evento)
-                detalhes.append(
-                    f"• `{data:%d/%m %H:%M}` — {evento['nome']}"
-                )
+            if descricao:
+                detalhes.append(f"  └ {descricao[:150]}")
 
     if not detalhes:
-        detalhes = ["\nAinda não existem eventos futuros agendados."]
+        detalhes.append(
+            "\nNenhum evento agendado para este dia."
+        )
 
-    # Limita o tamanho do texto de detalhes para não ultrapassar
-    # o limite de um TextDisplay do Discord.
     texto_detalhes = "\n".join(detalhes)
 
     if len(texto_detalhes) > 3800:
         texto_detalhes = (
             texto_detalhes[:3750]
-            + "\n\n*Lista reduzida. Use o arquivo de eventos para consultar "
-              "todos os registros.*"
+            + "\n\n*Lista reduzida devido ao limite de texto.*"
         )
 
-    return tabela, texto_detalhes, len(eventos_guild)
+    return tabela, texto_detalhes, len(eventos_dia)
 # ==========================================
 # UTILITÁRIOS
 # ==========================================
@@ -291,13 +277,69 @@ def criar_embed(evento, lembrete=False):
 # ==========================================
 # BOTÕES
 # ==========================================
+class BotaoPagina(discord.ui.Button):
+    def __init__(self, pagina, direcao):
+        self.pagina = pagina
+        self.direcao = direcao
+
+        if direcao == -1:
+            label = "⬅️ Esquerda"
+            disabled = pagina == 0
+            custom_id = f"calendario:{pagina}:anterior"
+
+        elif direcao == 1:
+            label = "➡️ Direita"
+            disabled = pagina == 6
+            custom_id = f"calendario:{pagina}:proximo"
+
+        else:
+            label = f"Página {pagina + 1}/7"
+            disabled = True
+            custom_id = f"calendario:{pagina}:atual"
+
+        super().__init__(
+            label=label,
+            style=discord.ButtonStyle.secondary,
+            disabled=disabled,
+            custom_id=custom_id
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.direcao == 0:
+            return
+
+        nova_pagina = self.pagina + self.direcao
+
+        if not 0 <= nova_pagina <= 6:
+            return
+
+        async with bloqueio_arquivo:
+            eventos = carregar_eventos()
+
+        tabela, detalhes, quantidade = montar_texto_calendario(
+            eventos,
+            interaction.guild_id,
+            nova_pagina
+        )
+
+        await interaction.response.edit_message(
+            view=CalendarioView(
+                interaction.guild_id,
+                nova_pagina,
+                tabela,
+                detalhes,
+                quantidade
+            )
+        )
+
+
 class BotaoCalendario(discord.ui.Button):
-    def __init__(self):
+    def __init__(self, pagina=0):
         super().__init__(
             label="Deletar",
             style=discord.ButtonStyle.danger,
             emoji="🗑️",
-            custom_id="calendario:deletar"
+            custom_id=f"calendario:{pagina}:deletar"
         )
 
     async def callback(self, interaction: discord.Interaction):
@@ -356,34 +398,51 @@ class BotaoCalendario(discord.ui.Button):
         else:
             aviso = ""
 
-        view = SeletorEventoView(eventos_guild[:25])
-
         await interaction.response.send_message(
-            "🗑️ **Selecione o evento que deseja excluir.**"
-            "\nVocê precisará confirmar antes da exclusão."
+            "🗑️ **Selecione o evento que deseja excluir.**\n"
+            "Você precisará confirmar antes da exclusão."
             + aviso,
-            view=view,
+            view=SeletorEventoView(eventos_guild[:25]),
             ephemeral=True
         )
 
 
 class CalendarioView(discord.ui.LayoutView):
-    def __init__(self, tabela, detalhes, quantidade):
+    def __init__(
+        self,
+        guild_id,
+        pagina=0,
+        tabela="",
+        detalhes="",
+        quantidade=0
+    ):
         super().__init__(timeout=None)
 
+        self.guild_id = guild_id
+        self.pagina = pagina
+
+        dia_nome = DIAS_SEMANA[pagina]
+
         container = discord.ui.Container(
-            discord.ui.TextDisplay("# 📅 Calendário de eventos"),
+            discord.ui.TextDisplay(
+                f"# 📅 Calendário — {dia_nome}"
+            ),
             discord.ui.Separator(),
             discord.ui.TextDisplay(
-                f"**Eventos futuros:** {quantidade}\n"
-                "As células mostram a quantidade de eventos por dia."
+                f"**Página:** {pagina + 1}/7\n"
+                f"**Eventos neste dia:** {quantidade}"
             ),
             discord.ui.TextDisplay(tabela),
             discord.ui.Separator(),
-            discord.ui.TextDisplay("## 📋 Eventos agendados"),
+            discord.ui.TextDisplay("## 📋 Eventos do dia"),
             discord.ui.TextDisplay(detalhes),
             discord.ui.Separator(),
-            discord.ui.ActionRow(BotaoCalendario()),
+            discord.ui.ActionRow(
+                BotaoPagina(pagina, -1),
+                BotaoPagina(pagina, 0),
+                BotaoPagina(pagina, 1),
+                BotaoCalendario(pagina)
+            ),
             accent_colour=discord.Colour.blurple()
         )
 
@@ -553,10 +612,17 @@ async def on_ready():
         except discord.HTTPException as erro:
             print(f"Erro ao sincronizar comandos: {erro}")
 
-    if not calendario_view_registrado:
-        bot.add_view(CalendarioView("", "", 0))
-        calendario_view_registrado = True
-        print("✅ Botão persistente do calendário registrado.")
+if not calendario_view_registrado:
+    for pagina in range(7):
+        bot.add_view(
+            CalendarioView(
+                guild_id=None,
+                pagina=pagina
+            )
+        )
+
+    calendario_view_registrado = True
+    print("✅ Botões persistentes das 7 páginas registrados.")
 
     if not verificar_lembretes.is_running():
         verificar_lembretes.start()
@@ -566,23 +632,27 @@ async def on_ready():
 # COMANDO TRADICIONAL PING
 # ==========================================
 
-@bot.command(name="ping")
-async def ping(ctx):
-    """Verifica a latência básica do bot."""
-    await ctx.send("Pong! 🏓")
-
-@bot.command(name="calendario")
+@bot.command(name="ping")@bot.command(name="calendario")
 @commands.guild_only()
 async def calendario(ctx):
     async with bloqueio_arquivo:
         eventos = carregar_eventos()
 
+    pagina_inicial = 0  # Segunda-feira
+
     tabela, detalhes, quantidade = montar_texto_calendario(
         eventos,
-        ctx.guild.id
+        ctx.guild.id,
+        pagina_inicial
     )
 
-    view = CalendarioView(tabela, detalhes, quantidade)
+    view = CalendarioView(
+        ctx.guild.id,
+        pagina_inicial,
+        tabela,
+        detalhes,
+        quantidade
+    )
 
     await ctx.send(view=view)
 
