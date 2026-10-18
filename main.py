@@ -548,12 +548,11 @@ async def on_ready():
         except discord.HTTPException as erro:
             print(f"Erro ao sincronizar comandos: {erro}")
 
-global calendario_view_registrado
-if not calendario_view_registrado:
-    bot.add_view(CalendarioView("", "", 0))
-    calendario_view_registrado = True
-    print("✅ Botão persistente do calendário registrado.")
-    
+    if not calendario_view_registrado:
+        bot.add_view(CalendarioView("", "", 0))
+        calendario_view_registrado = True
+        print("✅ Botão persistente do calendário registrado.")
+
     if not verificar_lembretes.is_running():
         verificar_lembretes.start()
 
