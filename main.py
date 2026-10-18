@@ -627,16 +627,20 @@ async def on_ready():
     if not verificar_lembretes.is_running():
         verificar_lembretes.start()
 # ==========================================
-# COMANDO TRADICIONAL PING
+# COMANDO TRADICIONAL
 # ==========================================
+@bot.command(name="ping")
+async def ping(ctx):
+    """Verifica se o bot está funcionando."""
+    await ctx.send("Pong! 🏓")
 
-@bot.command(name="ping")@bot.command(name="calendario")
+@bot.command(name="calendario")
 @commands.guild_only()
 async def calendario(ctx):
     async with bloqueio_arquivo:
         eventos = carregar_eventos()
 
-    pagina_inicial = 0  # Segunda-feira
+    pagina_inicial = 0
 
     tabela, detalhes, quantidade = montar_texto_calendario(
         eventos,
@@ -653,7 +657,6 @@ async def calendario(ctx):
     )
 
     await ctx.send(view=view)
-
 # ==========================================
 # COMANDO SLASH /MARCAR
 # ==========================================
