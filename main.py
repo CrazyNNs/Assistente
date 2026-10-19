@@ -859,20 +859,20 @@ evento = {
     "lembrete_enviado": False
 }
 
-    try:
-        async with bloqueio_arquivo:
-            eventos = carregar_eventos()
-            eventos.append(evento)
-            salvar_eventos(eventos)
+try:
+    async with bloqueio_arquivo:
+        eventos = carregar_eventos()
+        eventos.append(evento)
+        salvar_eventos(eventos)
 
-    except OSError as erro:
-        print(f"Erro ao salvar evento: {erro}")
-
-        await interaction.followup.send(
-            "❌ Não foi possível salvar o evento. Tente novamente.",
-            ephemeral=True
-        )
-        return
+except OSError as erro:
+    print(f"Erro ao salvar evento: {erro}")
+    
+    await interaction.followup.send(
+        "❌ Não foi possível salvar o evento. Tente novamente.",
+        ephemeral=True
+    )
+    return
 
     # --------------------------------------
     # Divulgação do evento no canal
