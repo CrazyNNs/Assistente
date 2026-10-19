@@ -944,43 +944,33 @@ async def verificar_lembretes():
                         canal = await bot.fetch_channel(
                             int(evento["canal_id"])
                         )
-                        
-usuarios = evento.get("usuarios_mencionar", [])
 
-mencoes = " ".join(
-    f"<@{user_id}>"
-    for user_id in usuarios
-)
+try:
+    usuarios = evento.get("usuarios_mencionar", [])
 
-await canal.send(
-    content=mencoes if mencoes else None,
-    embed=criar_embed(evento, lembrete=True),
-    allowed_mentions=discord.AllowedMentions(
-        users=True,
-        everyone=False,
-        roles=False
+    mencoes = " ".join(
+        f"<@{user_id}>"
+        for user_id in usuarios
     )
-)
 
-evento["lembrete_enviado"] = True
-evento["estado"] = "lembrete_enviado"
-alterado = True
-print(f"🔔 Lembrete enviado: {evento['nome']}")
+    await canal.send(
+        content=mencoes if mencoes else None,
+        embed=criar_embed(evento, lembrete=True),
+        allowed_mentions=discord.AllowedMentions(
+            users=True,
+            everyone=False,
+            roles=False
+        )
+    )
+
 except discord.NotFound:
-evento["lembrete_enviado"] = True
-evento["estado"] = "canal_indisponivel"
-alterado = True
+    print("Canal não encontrado para enviar o lembrete.")
 
 except discord.Forbidden:
-print(
-f"Sem permissão para enviar o lembrete: "
-f"{evento['nome']}"
-)
+    print("Sem permissão para enviar o lembrete.")
+
 except discord.HTTPException as erro:
-print(
-    f"Erro ao enviar lembrete de {evento['nome']}: "
-    f"{erro}"
-)
+    print(f"Erro ao enviar o lembrete: {erro}")
 
 if alterado:
     salvar_eventos(eventos)
