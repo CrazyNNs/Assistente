@@ -769,27 +769,39 @@ async def marcar(
     # --------------------------------------
     # Validação das menções
     # --------------------------------------
-if len(set(ids_encontrados)) > 4:
+ids_mencionar = []
+
+if mencionar:
+    ids_encontrados = re.findall(r"<@!?(\d+)>", mencionar)
+
+    if not ids_encontrados:
+        await interaction.response.send_message(
+            "❌ Mencione pelo menos um usuário válido.",
+            ephemeral=True
+        )
+        return
+
+    ids_encontrados = list(dict.fromkeys(ids_encontrados))
+
+    if len(ids_encontrados) > 4:
         await interaction.response.send_message(
             "❌ Você pode mencionar no máximo 4 usuários por evento.",
             ephemeral=True
         )
         return
 
-for user_id in set(ids_encontrados):
+    for user_id in ids_encontrados:
         membro = interaction.guild.get_member(int(user_id))
 
-    
-if membro is not None:
-    ids_mencionar.append(membro.id)
+        if membro is None:
+            await interaction.response.send_message(
+                "❌ Um dos usuários mencionados não foi encontrado "
+                "neste servidor.",
+                ephemeral=True
+            )
+            return
 
-    if len(ids_mencionar) != len(set(ids_encontrados)):
-        await interaction.response.send_message(
-            "❌ Um ou mais usuários mencionados não foram encontrados "
-            "neste servidor.",
-            ephemeral=True
-        )
-        return
+        ids_mencionar.append(membro.id)
     # --------------------------------------
     # Validação dos campos de texto
     # --------------------------------------
