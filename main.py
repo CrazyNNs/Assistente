@@ -779,8 +779,9 @@ if len(set(ids_encontrados)) > 4:
 for user_id in set(ids_encontrados):
         membro = interaction.guild.get_member(int(user_id))
 
-        if membro is not None:
-            ids_mencionar.append(membro.id)
+    
+if membro is not None:
+    ids_mencionar.append(membro.id)
 
     if len(ids_mencionar) != len(set(ids_encontrados)):
         await interaction.response.send_message(
