@@ -915,11 +915,11 @@ except OSError as erro:
 @tasks.loop(seconds=INTERVALO_VERIFICACAO_SEGUNDOS)
 async def verificar_lembretes():
     agora = datetime.now(FUSO)
-
+    
     async with bloqueio_arquivo:
         eventos = carregar_eventos()
         alterado = False
-
+        
         for evento in eventos:
             if evento.get("lembrete_enviado", False):
                 continue
@@ -934,11 +934,12 @@ async def verificar_lembretes():
                 continue
 
             horario_lembrete = data_hora - timedelta(hours=1)
-
+            
             if agora >= horario_lembrete:
+                
                 try:
                     canal = bot.get_channel(int(evento["canal_id"]))
-
+                    
                     if canal is None:
                         canal = await bot.fetch_channel(
                             int(evento["canal_id"])
@@ -960,31 +961,29 @@ await canal.send(
         roles=False
     )
 )
-                    evento["lembrete_enviado"] = True
-                    evento["estado"] = "lembrete_enviado"
-                    alterado = True
 
-                    print(f"🔔 Lembrete enviado: {evento['nome']}")
+evento["lembrete_enviado"] = True
+evento["estado"] = "lembrete_enviado"
+alterado = True
+print(f"🔔 Lembrete enviado: {evento['nome']}")
+except discord.NotFound:
+evento["lembrete_enviado"] = True
+evento["estado"] = "canal_indisponivel"
+alterado = True
 
-                except discord.NotFound:
-                    evento["lembrete_enviado"] = True
-                    evento["estado"] = "canal_indisponivel"
-                    alterado = True
+except discord.Forbidden:
+print(
+f"Sem permissão para enviar o lembrete: "
+f"{evento['nome']}"
+)
+except discord.HTTPException as erro:
+print(
+    f"Erro ao enviar lembrete de {evento['nome']}: "
+    f"{erro}"
+)
 
-                except discord.Forbidden:
-                    print(
-                        f"Sem permissão para enviar o lembrete: "
-                        f"{evento['nome']}"
-                    )
-
-                except discord.HTTPException as erro:
-                    print(
-                        f"Erro ao enviar lembrete de {evento['nome']}: "
-                        f"{erro}"
-                    )
-
-        if alterado:
-            salvar_eventos(eventos)
+if alterado:
+    salvar_eventos(eventos)
 
 
 @verificar_lembretes.before_loop
