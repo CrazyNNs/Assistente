@@ -776,7 +776,7 @@ if len(set(ids_encontrados)) > 4:
         )
         return
 
-    for user_id in set(ids_encontrados):
+for user_id in set(ids_encontrados):
         membro = interaction.guild.get_member(int(user_id))
 
         if membro is not None:
