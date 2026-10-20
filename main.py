@@ -944,7 +944,7 @@ async def verificar_lembretes():
                         canal = await bot.fetch_channel(
                             int(evento["canal_id"])
                         )
-
+                        
 try:
     usuarios = evento.get("usuarios_mencionar", [])
 
@@ -964,13 +964,13 @@ try:
     )
 
 except discord.NotFound:
-    print("Canal não encontrado para enviar o lembrete.")
+    print("Canal não encontrado.")
 
 except discord.Forbidden:
-    print("Sem permissão para enviar o lembrete.")
+    print("O bot não tem permissão para enviar mensagens.")
 
 except discord.HTTPException as erro:
-    print(f"Erro ao enviar o lembrete: {erro}")
+    print(f"Erro ao enviar lembrete: {erro}")
 
 if alterado:
     salvar_eventos(eventos)
