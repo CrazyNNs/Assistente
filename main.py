@@ -848,19 +848,19 @@ async def marcar(
 
 await interaction.response.defer(ephemeral=True)
 
-    evento = {
-        "id": str(interaction.id),
-        "guild_id": interaction.guild_id,
-        "canal_id": interaction.channel_id,
-        "criador_id": interaction.user.id,
-        "nome": nome,
-        "descricao": descricao,
-        "imagem": imagem_url,
-        "prioridade": prioridade.value,
-        "usuarios_mencionar": ids_mencionar,
-        "data_hora": data_hora.isoformat(),
-        "lembrete_enviado": False
-    }
+evento = {
+    "id": str(interaction.id),
+    "guild_id": interaction.guild_id,
+    "canal_id": interaction.channel_id,
+    "criador_id": interaction.user.id,
+    "nome": nome,
+    "descricao": descricao,
+    "imagem": imagem_url,
+    "prioridade": prioridade.value,
+    "usuarios_mencionar": ids_mencionar,
+    "data_hora": data_hora.isoformat(),
+    "lembrete_enviado": False
+}
 
 
 try:
