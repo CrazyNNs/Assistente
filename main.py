@@ -769,39 +769,42 @@ async def marcar(
     # --------------------------------------
     # Validação das menções
     # --------------------------------------
-ids_mencionar = []
 
-if mencionar:
-    ids_encontrados = re.findall(r"<@!?(\d+)>", mencionar)
+    ids_mencionar = []
 
-    if not ids_encontrados:
-        await interaction.response.send_message(
-            "❌ Mencione pelo menos um usuário válido.",
-            ephemeral=True
-        )
-        return
+    if mencionar:
+        ids_encontrados = list(dict.fromkeys(
+            re.findall(r"<@!?(\d+)>", mencionar)
+        ))
 
-    ids_encontrados = list(dict.fromkeys(ids_encontrados))
-
-    if len(ids_encontrados) > 4:
-        await interaction.response.send_message(
-            "❌ Você pode mencionar no máximo 4 usuários por evento.",
-            ephemeral=True
-        )
-        return
-
-    for user_id in ids_encontrados:
-        membro = interaction.guild.get_member(int(user_id))
-
-        if membro is None:
+        if not ids_encontrados:
             await interaction.response.send_message(
-                "❌ Um dos usuários mencionados não foi encontrado "
-                "neste servidor.",
+                "❌ Mencione usuários válidos usando suas menções do Discord.",
                 ephemeral=True
             )
             return
 
-        ids_mencionar.append(membro.id)
+        if len(ids_encontrados) > 4:
+            await interaction.response.send_message(
+                "❌ Você pode mencionar no máximo 4 usuários por evento.",
+                ephemeral=True
+            )
+            return
+
+        for user_id in ids_encontrados:
+            membro_mencionado = interaction.guild.get_member(
+                int(user_id)
+            )
+
+            if membro_mencionado is None:
+                await interaction.response.send_message(
+                    "❌ Um dos usuários mencionados não foi encontrado "
+                    "neste servidor.",
+                    ephemeral=True
+                )
+                return
+
+            ids_mencionar.append(membro_mencionado.id)
     # --------------------------------------
     # Validação dos campos de texto
     # --------------------------------------
@@ -843,21 +846,22 @@ if mencionar:
     # Criação e armazenamento do evento
     # --------------------------------------
 
-    await interaction.response.defer(ephemeral=True)
+await interaction.response.defer(ephemeral=True)
 
-evento = {
-    "id": str(interaction.id),
-    "guild_id": interaction.guild_id,
-    "canal_id": interaction.channel_id,
-    "criador_id": interaction.user.id,
-    "nome": nome,
-    "descricao": descricao,
-    "imagem": imagem_url,
-    "prioridade": prioridade.value,
-    "usuarios_mencionar": ids_mencionar,
-    "data_hora": data_hora.isoformat(),
-    "lembrete_enviado": False
-}
+    evento = {
+        "id": str(interaction.id),
+        "guild_id": interaction.guild_id,
+        "canal_id": interaction.channel_id,
+        "criador_id": interaction.user.id,
+        "nome": nome,
+        "descricao": descricao,
+        "imagem": imagem_url,
+        "prioridade": prioridade.value,
+        "usuarios_mencionar": ids_mencionar,
+        "data_hora": data_hora.isoformat(),
+        "lembrete_enviado": False
+    }
+
 
 try:
     async with bloqueio_arquivo:
@@ -936,41 +940,53 @@ async def verificar_lembretes():
             horario_lembrete = data_hora - timedelta(hours=1)
             
             if agora >= horario_lembrete:
-                
                 try:
                     canal = bot.get_channel(int(evento["canal_id"]))
-                    
+
                     if canal is None:
                         canal = await bot.fetch_channel(
                             int(evento["canal_id"])
                         )
-                        
-try:
-    usuarios = evento.get("usuarios_mencionar", [])
 
-    mencoes = " ".join(
-        f"<@{user_id}>"
-        for user_id in usuarios
-    )
+                    usuarios = evento.get("usuarios_mencionar", [])
 
-    await canal.send(
-        content=mencoes if mencoes else None,
-        embed=criar_embed(evento, lembrete=True),
-        allowed_mentions=discord.AllowedMentions(
-            users=True,
-            everyone=False,
-            roles=False
-        )
-    )
+                    mencoes = " ".join(
+                        f"<@{user_id}>"
+                        for user_id in usuarios
+                    )
 
-except discord.NotFound:
-    print("Canal não encontrado.")
+                    await canal.send(
+                        content=mencoes if mencoes else None,
+                        embed=criar_embed(evento, lembrete=True),
+                        allowed_mentions=discord.AllowedMentions(
+                            users=True,
+                            everyone=False,
+                            roles=False
+                        )
+                    )
 
-except discord.Forbidden:
-    print("O bot não tem permissão para enviar mensagens.")
+                    evento["lembrete_enviado"] = True
+                    evento["estado"] = "lembrete_enviado"
+                    alterado = True
 
-except discord.HTTPException as erro:
-    print(f"Erro ao enviar lembrete: {erro}")
+                    print(f"🔔 Lembrete enviado: {evento['nome']}")
+
+                except discord.NotFound:
+                    evento["lembrete_enviado"] = True
+                    evento["estado"] = "canal_indisponivel"
+                    alterado = True
+
+                except discord.Forbidden:
+                    print(
+                        f"Sem permissão para enviar o lembrete: "
+                        f"{evento['nome']}"
+                    )
+
+                except discord.HTTPException as erro:
+                    print(
+                        f"Erro ao enviar lembrete de {evento['nome']}: "
+                        f"{erro}"
+                    )
 
 if alterado:
     salvar_eventos(eventos)
