@@ -841,42 +841,40 @@ async def marcar(
             return
 
         imagem_url = imagem.url
-
     # --------------------------------------
     # Criação e armazenamento do evento
     # --------------------------------------
 
-await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
 
-evento = {
-    "id": str(interaction.id),
-    "guild_id": interaction.guild_id,
-    "canal_id": interaction.channel_id,
-    "criador_id": interaction.user.id,
-    "nome": nome,
-    "descricao": descricao,
-    "imagem": imagem_url,
-    "prioridade": prioridade.value,
-    "usuarios_mencionar": ids_mencionar,
-    "data_hora": data_hora.isoformat(),
-    "lembrete_enviado": False
-}
+    evento = {
+        "id": str(interaction.id),
+        "guild_id": interaction.guild_id,
+        "canal_id": interaction.channel_id,
+        "criador_id": interaction.user.id,
+        "nome": nome,
+        "descricao": descricao,
+        "imagem": imagem_url,
+        "prioridade": prioridade.value,
+        "usuarios_mencionar": ids_mencionar,
+        "data_hora": data_hora.isoformat(),
+        "lembrete_enviado": False
+    }
 
+    try:
+        async with bloqueio_arquivo:
+            eventos = carregar_eventos()
+            eventos.append(evento)
+            salvar_eventos(eventos)
 
-try:
-    async with bloqueio_arquivo:
-        eventos = carregar_eventos()
-        eventos.append(evento)
-        salvar_eventos(eventos)
+    except OSError as erro:
+        print(f"Erro ao salvar evento: {erro}")
 
-except OSError as erro:
-    print(f"Erro ao salvar evento: {erro}")
-    
-    await interaction.followup.send(
-        "❌ Não foi possível salvar o evento. Tente novamente.",
-        ephemeral=True
-    )
-    return
+        await interaction.followup.send(
+            "❌ Não foi possível salvar o evento. Tente novamente.",
+            ephemeral=True
+        )
+        return
 
     # --------------------------------------
     # Divulgação do evento no canal
@@ -910,7 +908,6 @@ except OSError as erro:
         "🔔 O lembrete será enviado uma hora antes.",
         ephemeral=True
     )
-
 
 # ==========================================
 # SISTEMA AUTOMÁTICO DE LEMBRETES
@@ -988,8 +985,8 @@ async def verificar_lembretes():
                         f"{erro}"
                     )
 
-if alterado:
-    salvar_eventos(eventos)
+        if alterado:
+            salvar_eventos(eventos)
 
 
 @verificar_lembretes.before_loop
