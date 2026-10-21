@@ -493,9 +493,10 @@ class CalendarioView(discord.ui.LayoutView):
             accessory=discord.ui.Thumbnail(media="attachment://calendario.png", description="Calendário")
         )
 
+
         componentes = [
-            cabecalho,
             miniatura,
+            cabecalho,
             discord.ui.Separator(),
             discord.ui.TextDisplay(resumo),
             discord.ui.ActionRow(SeletorDia(dia if modo == "dia" else 0)),
@@ -1034,6 +1035,7 @@ async def verificar_lembretes():
                             int(evento["canal_id"])
                         )
 
+
                     usuarios = evento.get("usuarios_mencionar", [])
 
                     mencoes = " ".join(
@@ -1042,12 +1044,12 @@ async def verificar_lembretes():
                     )
 
                     await canal.send(
-                        content=mencoes if mencoes else None,
+                        content=mencoes or None,
                         embed=criar_embed(evento, lembrete=True),
                         allowed_mentions=discord.AllowedMentions(
                             users=True,
-                            everyone=False,
-                            roles=False
+                            roles=False,
+                            everyone=False
                         )
                     )
 
