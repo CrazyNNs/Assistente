@@ -791,20 +791,40 @@ async def marcar(
             )
             return
 
-        for user_id in ids_encontrados:
-            membro_mencionado = interaction.guild.get_member(
-                int(user_id)
-            )
 
-            if membro_mencionado is None:
+        for user_id in ids_encontrados:
+            try:
+                membro_mencionado = interaction.guild.get_member(
+                    int(user_id)
+                )
+
+                # Se não estiver no cache, consulta o Discord.
+                if membro_mencionado is None:
+                    membro_mencionado = (
+                        await interaction.guild.fetch_member(
+                            int(user_id)
+                        )
+                    )
+
+                ids_mencionar.append(membro_mencionado.id)
+
+            except discord.NotFound:
                 await interaction.response.send_message(
-                    "❌ Um dos usuários mencionados não foi encontrado "
-                    "neste servidor.",
+                    f"❌ O usuário com ID {user_id} não foi encontrado "
+                    "neste servidor. Confira a menção.",
                     ephemeral=True
                 )
                 return
 
-            ids_mencionar.append(membro_mencionado.id)
+            except discord.HTTPException as erro:
+                print(f"Erro ao consultar membro {user_id}: {erro}")
+
+                await interaction.response.send_message(
+                    "❌ Não consegui verificar um dos usuários no Discord. "
+                    "Tente novamente.",
+                    ephemeral=True
+                )
+                return
     # --------------------------------------
     # Validação dos campos de texto
     # --------------------------------------
