@@ -749,16 +749,70 @@ class ModalDadosEvento(discord.ui.Modal):
             )
             return
 
-        # Abre a segunda etapa sem perder os dados da primeira.
+        # Exibe um botão para abrir a segunda etapa.
+        await interaction.response.send_message(
+            content=(
+                "✅ Dados iniciais validados!\n"
+                "Clique no botão abaixo para continuar a criação do evento."
+            ),
+            view=ViewContinuarEvento(
+                data_hora=data_hora,
+                nome=nome,
+                descricao=descricao
+            ),
+            ephemeral=True
+        )
+
+class BotaoContinuarEvento(discord.ui.Button):
+    def __init__(self, data_hora, nome, descricao):
+        super().__init__(
+            label="Continuar criação do evento",
+            emoji="➡️",
+            style=discord.ButtonStyle.primary
+        )
+
+        self.data_hora = data_hora
+        self.nome = nome
+        self.descricao = descricao
+
+    async def callback(self, interaction: discord.Interaction):
+        membro = interaction.user
+
+        autorizado = (
+            isinstance(membro, discord.Member)
+            and any(
+                cargo.id == CARGO_AUTORIZADO_ID
+                for cargo in membro.roles
+            )
+        )
+
+        if not autorizado:
+            await interaction.response.send_message(
+                "❌ Você não tem permissão para criar eventos.",
+                ephemeral=True
+            )
+            return
+
         await interaction.response.send_modal(
             ModalOpcoesEvento(
+                data_hora=self.data_hora,
+                nome=self.nome,
+                descricao=self.descricao
+            )
+        )
+
+
+class ViewContinuarEvento(discord.ui.View):
+    def __init__(self, data_hora, nome, descricao):
+        super().__init__(timeout=300)
+
+        self.add_item(
+            BotaoContinuarEvento(
                 data_hora=data_hora,
                 nome=nome,
                 descricao=descricao
             )
         )
-
-
 
 class ModalOpcoesEvento(discord.ui.Modal):
     def __init__(self, data_hora, nome, descricao):
