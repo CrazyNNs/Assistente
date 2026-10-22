@@ -759,6 +759,7 @@ class ModalDadosEvento(discord.ui.Modal):
         )
 
 
+
 class ModalOpcoesEvento(discord.ui.Modal):
     def __init__(self, data_hora, nome, descricao):
         super().__init__(title="Criar evento — Etapa 2/2")
@@ -766,83 +767,100 @@ class ModalOpcoesEvento(discord.ui.Modal):
         self.data_hora = data_hora
         self.nome = nome
         self.descricao = descricao
-        
+
         self.prioridade_input = discord.ui.TextInput(
-            label="Prioridade",
-            placeholder="Máxima, Alta, Média ou Baixa",
-            default="Média",
-            max_length=10
+            label="Prioridade (1 a 4)",
+            placeholder="1 = Máxima | 2 = Alta | 3 = Média | 4 = Baixa",
+            default="3",
+            required=True,
+            min_length=1,
+            max_length=1
         )
 
-        self.mencionar_input = discord.ui.TextInput(
-            label="Mencionar usuários (opcional)",
-            placeholder="@usuário1 @usuário2",
+        self.mencoes_input = discord.ui.TextInput(
+            label="Menções (opcional)",
+            placeholder="Insira até 4 menções reais do Discord",
             required=False,
             max_length=200
         )
 
+        self.imagem_input = discord.ui.TextInput(
+            label="Link da imagem (opcional)",
+            placeholder="https://exemplo.com/imagem.png",
+            required=False,
+            max_length=500
+        )
+
         self.add_item(self.prioridade_input)
-        self.add_item(self.mencionar_input)
+        self.add_item(self.mencoes_input)
+        self.add_item(self.imagem_input)
 
     async def on_submit(self, interaction: discord.Interaction):
         membro = interaction.user
 
-        if not isinstance(membro, discord.Member):
+        if interaction.guild is None or not isinstance(
+            membro, discord.Member
+        ):
             await interaction.response.send_message(
-                "Este formulário só pode ser usado em um servidor.",
+                "❌ Este formulário só pode ser usado em um servidor.",
                 ephemeral=True
             )
             return
 
-        if not any(
+        autorizado = any(
             cargo.id == CARGO_AUTORIZADO_ID
             for cargo in membro.roles
-        ):
+        )
+
+        if not autorizado:
             await interaction.response.send_message(
                 "❌ Você não tem o cargo necessário para criar eventos.",
                 ephemeral=True
             )
             return
-            
-            mapa_prioridades = {
-                "1": "Máxima",
-                "2": "Alta",
-                "3": "Média",
-                "4": "Baixa",
-            }
-            numero_prioridade = self.prioridade_input.value.strip()
-            if numero_prioridade not in mapa_prioridades:
-                
+
+        # Converte a prioridade numérica para o nome usado pelo bot.
+        mapa_prioridades = {
+            "1": "Máxima",
+            "2": "Alta",
+            "3": "Média",
+            "4": "Baixa"
+        }
+
+        numero_prioridade = self.prioridade_input.value.strip()
+
+        if numero_prioridade not in mapa_prioridades:
+            await interaction.response.send_message(
+                "❌ Prioridade inválida. Digite 1, 2, 3 ou 4.",
+                ephemeral=True
+            )
+            return
+
+        prioridade = mapa_prioridades[numero_prioridade]
+
+        # Valida e identifica os usuários que receberão o lembrete.
+        texto_mencoes = self.mencoes_input.value.strip()
+        ids_mencionar = []
+
+        if texto_mencoes:
+            ids_encontrados = list(dict.fromkeys(
+                re.findall(r"<@!?(\d+)>", texto_mencoes)
+            ))
+
+            if not ids_encontrados:
                 await interaction.response.send_message(
-                    "❌ Prioridade inválida. Digite 1, 2, 3 ou 4.",
+                    "❌ Use menções reais de usuários do Discord.",
                     ephemeral=True
                 )
                 return
 
-prioridade = mapa_prioridades[numero_prioridade]
+            if len(ids_encontrados) > 4:
+                await interaction.response.send_message(
+                    "❌ Você pode mencionar no máximo 4 usuários.",
+                    ephemeral=True
+                )
+                return
 
-ids_mencionar = []
-texto_mencoes = self.mencionar_input.value.strip()
-
-if texto_mencoes:
-    ids_encontrados = list(dict.fromkeys(
-        re.findall(r"<@!?(\d+)>", texto_mencoes)
-    ))
-    
-    if not ids_encontrados:
-        await interaction.response.send_message(
-            "❌ Use menções reais do Discord no campo de usuários.",
-            ephemeral=True
-        )
-        return
-
-        if len(ids_encontrados) > 4:
-            await interaction.response.send_message(
-                "❌ Você pode mencionar no máximo 4 usuários.",
-                ephemeral=True
-            )
-            return
-            
             for user_id in ids_encontrados:
                 try:
                     membro_mencionado = interaction.guild.get_member(
@@ -860,66 +878,37 @@ if texto_mencoes:
 
                 except discord.NotFound:
                     await interaction.response.send_message(
-                        f"❌ O usuário {user_id} não foi encontrado no servidor.",
+                        f"❌ O usuário `{user_id}` não foi encontrado "
+                        "neste servidor.",
                         ephemeral=True
                     )
                     return
 
-                except discord.HTTPException:
+                except discord.HTTPException as erro:
+                    print(
+                        f"Erro ao verificar o usuário {user_id}: {erro}"
+                    )
                     await interaction.response.send_message(
-                        "❌ Não consegui verificar um dos usuários. Tente novamente.",
+                        "❌ Não consegui verificar uma das menções. "
+                        "Tente novamente.",
                         ephemeral=True
                     )
                     return
 
-texto_mencoes = self.mencoes_input.value.strip()
+        # Valida o link opcional da imagem.
+        imagem_url = self.imagem_input.value.strip() or None
 
-ids_mencionar = []
+        if imagem_url and not imagem_url.startswith(
+            ("https://", "http://")
+        ):
+            await interaction.response.send_message(
+                "❌ O link da imagem precisa começar com "
+                "https:// ou http://.",
+                ephemeral=True
+            )
+            return
 
-if texto_mencoes:
-    ids_encontrados = list(dict.fromkeys(
-        re.findall(r"<@!?(\d+)>", texto_mencoes)
-    ))
-
-    if not ids_encontrados:
-        await interaction.response.send_message(
-            "❌ Mencione usuários válidos do servidor.",
-            ephemeral=True
-        )
-        return
-
-    if len(ids_encontrados) > 4:
-        await interaction.response.send_message(
-            "❌ Você pode mencionar no máximo 4 usuários.",
-            ephemeral=True
-        )
-        return
-
-    for user_id in ids_encontrados:
-        membro_mencionado = interaction.guild.get_member(int(user_id))
-
-        if membro_mencionado is None:
-            try:
-                membro_mencionado = await interaction.guild.fetch_member(
-                    int(user_id)
-                )
-            except discord.NotFound:
-                await interaction.response.send_message(
-                    f"❌ O usuário `{user_id}` não foi encontrado no servidor.",
-                    ephemeral=True
-                )
-                return
-            except discord.HTTPException:
-                await interaction.response.send_message(
-                    "❌ Não consegui verificar uma das menções. Tente novamente.",
-                    ephemeral=True
-                )
-                return
-
-        ids_mencionar.append(membro_mencionado.id)
-        
-    return
-
+        # Confirma o formulário antes de salvar e publicar o evento.
         await interaction.response.defer(ephemeral=True)
 
         evento = {
@@ -929,6 +918,7 @@ if texto_mencoes:
             "criador_id": interaction.user.id,
             "nome": self.nome,
             "descricao": self.descricao,
+            "imagem": imagem_url,
             "prioridade": prioridade,
             "usuarios_mencionar": ids_mencionar,
             "data_hora": self.data_hora.isoformat(),
@@ -950,21 +940,40 @@ if texto_mencoes:
             )
             return
 
+        # Publica o evento no canal em que o formulário foi aberto.
         try:
-            await interaction.channel.send(
+            canal = interaction.channel
+
+            if canal is None:
+                canal = await bot.fetch_channel(
+                    interaction.channel_id
+                )
+
+            await canal.send(
                 embed=criar_embed(evento),
                 allowed_mentions=discord.AllowedMentions.none()
             )
+
         except (discord.HTTPException, discord.Forbidden) as erro:
-            print(f"Evento salvo, mas não divulgado: {erro}")
+            print(
+                f"Evento salvo, mas não foi possível divulgá-lo: {erro}"
+            )
+
+            await interaction.followup.send(
+                "⚠️ O evento foi salvo, mas não consegui publicá-lo "
+                "no canal. Verifique as permissões do bot.",
+                ephemeral=True
+            )
+            return
 
         await interaction.followup.send(
-            f"✅ Evento **{self.nome}** criado!\n"
-            f"📅 {self.data_hora:%d/%m/%Y} às {self.data_hora:%H:%M}\n"
+            f"✅ Evento **{self.nome}** criado com sucesso!\n"
+            f"📆 Data: {self.data_hora:%d/%m/%Y}\n"
+            f"🕒 Horário: {self.data_hora:%H:%M}\n"
+            f"🚦 Prioridade: {prioridade}\n"
             "🔔 O lembrete será enviado uma hora antes.",
             ephemeral=True
         )
-
 
 class BotaoCriarPeloPainel(discord.ui.Button):
     def __init__(self):
