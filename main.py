@@ -821,28 +821,28 @@ class ModalOpcoesEvento(discord.ui.Modal):
 
 prioridade = mapa_prioridades[numero_prioridade]
 
-        ids_mencionar = []
-        texto_mencoes = self.mencionar_input.value.strip()
+ids_mencionar = []
+texto_mencoes = self.mencionar_input.value.strip()
 
-        if texto_mencoes:
-            ids_encontrados = list(dict.fromkeys(
-                re.findall(r"<@!?(\d+)>", texto_mencoes)
-            ))
+if texto_mencoes:
+    ids_encontrados = list(dict.fromkeys(
+        re.findall(r"<@!?(\d+)>", texto_mencoes)
+    ))
+    
+    if not ids_encontrados:
+        await interaction.response.send_message(
+            "❌ Use menções reais do Discord no campo de usuários.",
+            ephemeral=True
+        )
+        return
 
-            if not ids_encontrados:
-                await interaction.response.send_message(
-                    "❌ Use menções reais do Discord no campo de usuários.",
-                    ephemeral=True
-                )
-                return
-
-            if len(ids_encontrados) > 4:
-                await interaction.response.send_message(
-                    "❌ Você pode mencionar no máximo 4 usuários.",
-                    ephemeral=True
-                )
-                return
-
+        if len(ids_encontrados) > 4:
+            await interaction.response.send_message(
+                "❌ Você pode mencionar no máximo 4 usuários.",
+                ephemeral=True
+            )
+            return
+            
             for user_id in ids_encontrados:
                 try:
                     membro_mencionado = interaction.guild.get_member(
