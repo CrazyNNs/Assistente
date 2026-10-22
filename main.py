@@ -825,7 +825,7 @@ class ModalOpcoesEvento(discord.ui.Modal):
         self.prioridade_input = discord.ui.TextInput(
             label="Prioridade (1 a 4)",
             placeholder="1 = Máxima | 2 = Alta | 3 = Média | 4 = Baixa",
-            default="3",
+            default="",
             required=True,
             min_length=1,
             max_length=1
