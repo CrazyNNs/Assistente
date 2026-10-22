@@ -767,7 +767,7 @@ class BotaoContinuarEvento(discord.ui.Button):
     def __init__(self, data_hora, nome, descricao):
         super().__init__(
             label="Ultima etapa",
-            emoji="➡️",
+            emoji="▶",
             style=discord.ButtonStyle.primary
         )
 
