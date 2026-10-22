@@ -663,6 +663,402 @@ class ConfirmarExclusaoView(discord.ui.View):
             content="❎ Exclusão cancelada. O evento foi mantido.",
             view=self
         )
+
+# ==========================================
+# PAINEL DO ASSISTENTE DE AGENDA
+# ==========================================
+
+class ModalDadosEvento(discord.ui.Modal):
+    def __init__(self):
+        super().__init__(title="Criar evento — Etapa 1/2")
+
+        self.data_evento = discord.ui.TextInput(
+            label="Data (DD/MM/AAAA)",
+            placeholder="25/12/2026",
+            max_length=10
+        )
+        self.horario_evento = discord.ui.TextInput(
+            label="Horário (HH:MM)",
+            placeholder="20:30",
+            max_length=5
+        )
+        self.nome_evento = discord.ui.TextInput(
+            label="Nome do evento",
+            placeholder="Ex.: Reunião da equipe",
+            max_length=200
+        )
+        self.descricao_evento = discord.ui.TextInput(
+            label="Descrição",
+            placeholder="Descreva os detalhes do evento",
+            style=discord.TextStyle.paragraph,
+            max_length=1000
+        )
+
+        self.add_item(self.data_evento)
+        self.add_item(self.horario_evento)
+        self.add_item(self.nome_evento)
+        self.add_item(self.descricao_evento)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            data_obj = datetime.strptime(
+                self.data_evento.value.strip(),
+                "%d/%m/%Y"
+            ).date()
+
+            hora, minuto = map(
+                int,
+                self.horario_evento.value.strip().split(":")
+            )
+
+            if not (0 <= hora <= 23 and 0 <= minuto <= 59):
+                raise ValueError
+
+            horario_obj = datetime.strptime(
+                f"{hora:02d}:{minuto:02d}",
+                "%H:%M"
+            ).time()
+
+        except ValueError:
+            await interaction.response.send_message(
+                "❌ Data ou horário inválido. Use DD/MM/AAAA e HH:MM.",
+                ephemeral=True
+            )
+            return
+
+        data_hora = datetime.combine(
+            data_obj,
+            horario_obj,
+            tzinfo=FUSO
+        )
+
+        if data_hora <= datetime.now(FUSO) + timedelta(hours=1):
+            await interaction.response.send_message(
+                "❌ O evento precisa começar mais de uma hora no futuro.",
+                ephemeral=True
+            )
+            return
+
+        nome = self.nome_evento.value.strip()
+        descricao = self.descricao_evento.value.strip()
+
+        if not nome or not descricao:
+            await interaction.response.send_message(
+                "❌ Preencha o nome e a descrição do evento.",
+                ephemeral=True
+            )
+            return
+
+        # Abre a segunda etapa sem perder os dados da primeira.
+        await interaction.response.send_modal(
+            ModalOpcoesEvento(
+                data_hora=data_hora,
+                nome=nome,
+                descricao=descricao
+            )
+        )
+
+
+class ModalOpcoesEvento(discord.ui.Modal):
+    def __init__(self, data_hora, nome, descricao):
+        super().__init__(title="Criar evento — Etapa 2/2")
+
+        self.data_hora = data_hora
+        self.nome = nome
+        self.descricao = descricao
+
+        self.prioridade_input = discord.ui.TextInput(
+            label="Prioridade",
+            placeholder="Máxima, Alta, Média ou Baixa",
+            default="Média",
+            max_length=10
+        )
+
+        self.mencionar_input = discord.ui.TextInput(
+            label="Mencionar usuários (opcional)",
+            placeholder="@usuário1 @usuário2",
+            required=False,
+            max_length=200
+        )
+
+        self.imagem_input = discord.ui.TextInput(
+            label="URL da imagem (opcional)",
+            placeholder="https://exemplo.com/imagem.png",
+            required=False,
+            max_length=500
+        )
+
+        self.add_item(self.prioridade_input)
+        self.add_item(self.mencionar_input)
+        self.add_item(self.imagem_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        membro = interaction.user
+
+        if not isinstance(membro, discord.Member):
+            await interaction.response.send_message(
+                "Este formulário só pode ser usado em um servidor.",
+                ephemeral=True
+            )
+            return
+
+        if not any(
+            cargo.id == CARGO_AUTORIZADO_ID
+            for cargo in membro.roles
+        ):
+            await interaction.response.send_message(
+                "❌ Você não tem o cargo necessário para criar eventos.",
+                ephemeral=True
+            )
+            return
+
+        prioridade = self.prioridade_input.value.strip().capitalize()
+
+        if prioridade not in ORDEM_PRIORIDADES:
+            await interaction.response.send_message(
+                "❌ Prioridade inválida. Escolha Máxima, Alta, Média ou Baixa.",
+                ephemeral=True
+            )
+            return
+
+        ids_mencionar = []
+        texto_mencoes = self.mencionar_input.value.strip()
+
+        if texto_mencoes:
+            ids_encontrados = list(dict.fromkeys(
+                re.findall(r"<@!?(\d+)>", texto_mencoes)
+            ))
+
+            if not ids_encontrados:
+                await interaction.response.send_message(
+                    "❌ Use menções reais do Discord no campo de usuários.",
+                    ephemeral=True
+                )
+                return
+
+            if len(ids_encontrados) > 4:
+                await interaction.response.send_message(
+                    "❌ Você pode mencionar no máximo 4 usuários.",
+                    ephemeral=True
+                )
+                return
+
+            for user_id in ids_encontrados:
+                try:
+                    membro_mencionado = interaction.guild.get_member(
+                        int(user_id)
+                    )
+
+                    if membro_mencionado is None:
+                        membro_mencionado = (
+                            await interaction.guild.fetch_member(
+                                int(user_id)
+                            )
+                        )
+
+                    ids_mencionar.append(membro_mencionado.id)
+
+                except discord.NotFound:
+                    await interaction.response.send_message(
+                        f"❌ O usuário {user_id} não foi encontrado no servidor.",
+                        ephemeral=True
+                    )
+                    return
+
+                except discord.HTTPException:
+                    await interaction.response.send_message(
+                        "❌ Não consegui verificar um dos usuários. Tente novamente.",
+                        ephemeral=True
+                    )
+                    return
+
+        imagem_url = self.imagem_input.value.strip() or None
+
+        if imagem_url and not imagem_url.lower().startswith(
+            ("https://", "http://")
+        ):
+            await interaction.response.send_message(
+                "❌ A imagem precisa ter uma URL iniciada por https:// ou http://.",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        evento = {
+            "id": str(interaction.id),
+            "guild_id": interaction.guild_id,
+            "canal_id": interaction.channel_id,
+            "criador_id": interaction.user.id,
+            "nome": self.nome,
+            "descricao": self.descricao,
+            "imagem": imagem_url,
+            "prioridade": prioridade,
+            "usuarios_mencionar": ids_mencionar,
+            "data_hora": self.data_hora.isoformat(),
+            "lembrete_enviado": False
+        }
+
+        try:
+            async with bloqueio_arquivo:
+                eventos = carregar_eventos()
+                eventos.append(evento)
+                salvar_eventos(eventos)
+
+        except OSError as erro:
+            print(f"Erro ao salvar evento pelo painel: {erro}")
+
+            await interaction.followup.send(
+                "❌ Não consegui salvar o evento. Tente novamente.",
+                ephemeral=True
+            )
+            return
+
+        try:
+            await interaction.channel.send(
+                embed=criar_embed(evento),
+                allowed_mentions=discord.AllowedMentions.none()
+            )
+        except (discord.HTTPException, discord.Forbidden) as erro:
+            print(f"Evento salvo, mas não divulgado: {erro}")
+
+        await interaction.followup.send(
+            f"✅ Evento **{self.nome}** criado!\n"
+            f"📅 {self.data_hora:%d/%m/%Y} às {self.data_hora:%H:%M}\n"
+            "🔔 O lembrete será enviado uma hora antes.",
+            ephemeral=True
+        )
+
+
+class BotaoCriarPeloPainel(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            label="Criar evento",
+            emoji="📝",
+            style=discord.ButtonStyle.success,
+            custom_id="assistente_agenda:criar"
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.guild_id is None:
+            await interaction.response.send_message(
+                "Use este painel dentro de um servidor.",
+                ephemeral=True
+            )
+            return
+
+        membro = interaction.user
+
+        if not isinstance(membro, discord.Member) or not any(
+            cargo.id == CARGO_AUTORIZADO_ID
+            for cargo in membro.roles
+        ):
+            await interaction.response.send_message(
+                "❌ Você não tem o cargo necessário para criar eventos.",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.send_modal(ModalDadosEvento())
+
+
+class BotaoVerCalendarioPeloPainel(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            label="Ver eventos",
+            emoji="📅",
+            style=discord.ButtonStyle.primary,
+            custom_id="assistente_agenda:calendario"
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.guild_id is None:
+            await interaction.response.send_message(
+                "Use este painel dentro de um servidor.",
+                ephemeral=True
+            )
+            return
+
+        async with bloqueio_arquivo:
+            eventos = carregar_eventos()
+
+        if not CAMINHO_IMAGEM_CALENDARIO.is_file():
+            await interaction.response.send_message(
+                "❌ Não encontrei `Imagens/calendario.png`.",
+                ephemeral=True
+            )
+            return
+
+        arquivo = discord.File(
+            CAMINHO_IMAGEM_CALENDARIO,
+            filename="calendario.png"
+        )
+
+        view = CalendarioView(
+            guild_id=interaction.guild_id,
+            eventos=eventos,
+            modo="dia",
+            dia=0
+        )
+
+        await interaction.response.send_message(
+            view=view,
+            file=arquivo,
+            ephemeral=True
+        )
+
+
+class PainelAssistenteAgenda(discord.ui.LayoutView):
+    def __init__(self):
+        super().__init__(timeout=600)
+
+        container = discord.ui.Container(
+            discord.ui.TextDisplay("# 🤖 Assistente de Agenda"),
+            discord.ui.TextDisplay(
+                "Organize seus compromissos e receba lembretes "
+                "automaticamente pelo Discord."
+            ),
+            discord.ui.Separator(),
+            discord.ui.Section(
+                discord.ui.TextDisplay("## 📝 Criar um evento"),
+                discord.ui.TextDisplay(
+                    "Cadastre um novo compromisso com data, horário, "
+                    "prioridade e lembretes para os usuários escolhidos."
+                ),
+                accessory=BotaoCriarPeloPainel()
+            ),
+            discord.ui.Separator(),
+            discord.ui.Section(
+                discord.ui.TextDisplay("## 📅 Consultar eventos"),
+                discord.ui.TextDisplay(
+                    "Abra o calendário para consultar os eventos "
+                    "por dia da semana ou visualizar todos os eventos."
+                ),
+                accessory=BotaoVerCalendarioPeloPainel()
+            ),
+            accent_colour=discord.Colour.blurple()
+        )
+
+        self.add_item(container)
+
+
+@bot.event
+async def on_message(message: discord.Message):
+    # Ignora mensagens de bots para evitar ciclos de resposta.
+    if message.author.bot:
+        return
+
+    # Responde somente quando o bot for mencionado.
+    if bot.user and bot.user in message.mentions:
+        if message.guild is not None:
+            await message.reply(
+                view=PainelAssistenteAgenda(),
+                mention_author=False,
+                allowed_mentions=discord.AllowedMentions.none()
+            )
+
+    # Preserva o funcionamento dos comandos com prefixo.
+    await bot.process_commands(message)
 # ==========================================
 # EVENTOS DO BOT
 # ==========================================
@@ -739,7 +1135,7 @@ async def calendario(ctx):
 @app_commands.guild_only()
 @app_commands.describe(
     data="Data do evento no formato DD/MM/AAAA",
-    horario="Horário no formato HH/MM (ex.: 20/30)",
+    horario="Horário no formato HH/MM (ex.: 20:30)",
     nome="Nome do evento",
     descricao="Descrição do evento",
     mencionar="Mencione os usuários que receberão o lembrete (opcional)",
@@ -801,8 +1197,9 @@ async def marcar(
         )
         return
 
+
     try:
-        hora, minuto = map(int, horario.strip().split("/"))
+        hora, minuto = map(int, horario.strip().split(":"))
 
         if not (0 <= hora <= 23 and 0 <= minuto <= 59):
             raise ValueError
@@ -814,10 +1211,11 @@ async def marcar(
 
     except ValueError:
         await interaction.response.send_message(
-            "❌ Horário inválido. Utilize HH/MM, por exemplo: 20/30.",
+            "❌ Horário inválido. Utilize HH:MM, por exemplo: 20:30.",
             ephemeral=True
         )
         return
+
 
     data_hora = datetime.combine(
         data_obj,
