@@ -752,8 +752,8 @@ class ModalDadosEvento(discord.ui.Modal):
         # Exibe um botão para abrir a segunda etapa.
         await interaction.response.send_message(
             content=(
-                "✅ Dados iniciais validados!\n"
-                "Clique no botão abaixo para continuar a criação do evento."
+                "📋 **Primeira etapa concluída.**\n"
+                "Clique no botão abaixo para a última etapa da criação do evento!"
             ),
             view=ViewContinuarEvento(
                 data_hora=data_hora,
@@ -766,7 +766,7 @@ class ModalDadosEvento(discord.ui.Modal):
 class BotaoContinuarEvento(discord.ui.Button):
     def __init__(self, data_hora, nome, descricao):
         super().__init__(
-            label="Continuar criação do evento",
+            label="Ultima etapa",
             emoji="➡️",
             style=discord.ButtonStyle.primary
         )
@@ -832,10 +832,13 @@ class ModalOpcoesEvento(discord.ui.Modal):
         )
 
         self.mencoes_input = discord.ui.TextInput(
-            label="Menções (opcional)",
-            placeholder="Insira até 4 menções reais do Discord",
+            label="IDs dos usuários (opcional)",
+            placeholder=(
+                "Ex.: 123456789012345678 987654321098765432"
+            ),
             required=False,
-            max_length=200
+            style=discord.TextStyle.paragraph,
+            max_length=250
         )
 
         self.imagem_input = discord.ui.TextInput(
@@ -898,19 +901,19 @@ class ModalOpcoesEvento(discord.ui.Modal):
 
         if texto_mencoes:
             ids_encontrados = list(dict.fromkeys(
-                re.findall(r"<@!?(\d+)>", texto_mencoes)
+                re.findall(r"\d{17,20}", texto_mencoes)
             ))
 
             if not ids_encontrados:
                 await interaction.response.send_message(
-                    "❌ Use menções reais de usuários do Discord.",
+                    "❌ Informe IDs válidos dos usuários.",
                     ephemeral=True
                 )
                 return
 
             if len(ids_encontrados) > 4:
                 await interaction.response.send_message(
-                    "❌ Você pode mencionar no máximo 4 usuários.",
+                    "❌ Você pode informar no máximo 4 usuários.",
                     ephemeral=True
                 )
                 return
@@ -932,19 +935,14 @@ class ModalOpcoesEvento(discord.ui.Modal):
 
                 except discord.NotFound:
                     await interaction.response.send_message(
-                        f"❌ O usuário `{user_id}` não foi encontrado "
-                        "neste servidor.",
+                        f"❌ O usuário `{user_id}` não foi encontrado.",
                         ephemeral=True
                     )
                     return
 
-                except discord.HTTPException as erro:
-                    print(
-                        f"Erro ao verificar o usuário {user_id}: {erro}"
-                    )
+                except discord.HTTPException:
                     await interaction.response.send_message(
-                        "❌ Não consegui verificar uma das menções. "
-                        "Tente novamente.",
+                        "❌ Não consegui verificar um dos IDs informados.",
                         ephemeral=True
                     )
                     return
