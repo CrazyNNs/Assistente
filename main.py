@@ -766,7 +766,7 @@ class ModalOpcoesEvento(discord.ui.Modal):
         self.data_hora = data_hora
         self.nome = nome
         self.descricao = descricao
-
+        
         self.prioridade_input = discord.ui.TextInput(
             label="Prioridade",
             placeholder="Máxima, Alta, Média ou Baixa",
@@ -781,16 +781,8 @@ class ModalOpcoesEvento(discord.ui.Modal):
             max_length=200
         )
 
-        self.imagem_input = discord.ui.TextInput(
-            label="URL da imagem (opcional)",
-            placeholder="https://exemplo.com/imagem.png",
-            required=False,
-            max_length=500
-        )
-
         self.add_item(self.prioridade_input)
         self.add_item(self.mencionar_input)
-        self.add_item(self.imagem_input)
 
     async def on_submit(self, interaction: discord.Interaction):
         membro = interaction.user
@@ -811,15 +803,23 @@ class ModalOpcoesEvento(discord.ui.Modal):
                 ephemeral=True
             )
             return
+            
+            mapa_prioridades = {
+                "1": "Máxima",
+                "2": "Alta",
+                "3": "Média",
+                "4": "Baixa",
+            }
+            numero_prioridade = self.prioridade_input.value.strip()
+            if numero_prioridade not in mapa_prioridades:
+                
+                await interaction.response.send_message(
+                    "❌ Prioridade inválida. Digite 1, 2, 3 ou 4.",
+                    ephemeral=True
+                )
+                return
 
-        prioridade = self.prioridade_input.value.strip().capitalize()
-
-        if prioridade not in ORDEM_PRIORIDADES:
-            await interaction.response.send_message(
-                "❌ Prioridade inválida. Escolha Máxima, Alta, Média ou Baixa.",
-                ephemeral=True
-            )
-            return
+prioridade = mapa_prioridades[numero_prioridade]
 
         ids_mencionar = []
         texto_mencoes = self.mencionar_input.value.strip()
@@ -872,16 +872,53 @@ class ModalOpcoesEvento(discord.ui.Modal):
                     )
                     return
 
-        imagem_url = self.imagem_input.value.strip() or None
+texto_mencoes = self.mencoes_input.value.strip()
 
-        if imagem_url and not imagem_url.lower().startswith(
-            ("https://", "http://")
-        ):
-            await interaction.response.send_message(
-                "❌ A imagem precisa ter uma URL iniciada por https:// ou http://.",
-                ephemeral=True
-            )
-            return
+ids_mencionar = []
+
+if texto_mencoes:
+    ids_encontrados = list(dict.fromkeys(
+        re.findall(r"<@!?(\d+)>", texto_mencoes)
+    ))
+
+    if not ids_encontrados:
+        await interaction.response.send_message(
+            "❌ Mencione usuários válidos do servidor.",
+            ephemeral=True
+        )
+        return
+
+    if len(ids_encontrados) > 4:
+        await interaction.response.send_message(
+            "❌ Você pode mencionar no máximo 4 usuários.",
+            ephemeral=True
+        )
+        return
+
+    for user_id in ids_encontrados:
+        membro_mencionado = interaction.guild.get_member(int(user_id))
+
+        if membro_mencionado is None:
+            try:
+                membro_mencionado = await interaction.guild.fetch_member(
+                    int(user_id)
+                )
+            except discord.NotFound:
+                await interaction.response.send_message(
+                    f"❌ O usuário `{user_id}` não foi encontrado no servidor.",
+                    ephemeral=True
+                )
+                return
+            except discord.HTTPException:
+                await interaction.response.send_message(
+                    "❌ Não consegui verificar uma das menções. Tente novamente.",
+                    ephemeral=True
+                )
+                return
+
+        ids_mencionar.append(membro_mencionado.id)
+        
+    return
 
         await interaction.response.defer(ephemeral=True)
 
@@ -892,7 +929,6 @@ class ModalOpcoesEvento(discord.ui.Modal):
             "criador_id": interaction.user.id,
             "nome": self.nome,
             "descricao": self.descricao,
-            "imagem": imagem_url,
             "prioridade": prioridade,
             "usuarios_mencionar": ids_mencionar,
             "data_hora": self.data_hora.isoformat(),
