@@ -1198,35 +1198,40 @@ async def ping(ctx):
     """Verifica se o bot está funcionando."""
     await ctx.send("Pong! 🏓")
 
-@bot.command(name="calendario")
-@commands.guild_only()
 async def calendario(ctx):
+    # Apaga a mensagem enviada pelo usuário para chamar o comando.
     try:
         await ctx.message.delete()
     except discord.Forbidden:
-        print("Não tenho permissão para apagar a mensagem do comando calendario.")
+        print(
+            "❌ Sem permissão para apagar a mensagem "
+            "do comando calendario."
+        )
     except discord.NotFound:
         pass
+    except discord.HTTPException as erro:
+        print(f"❌ Erro ao apagar o comando calendario: {erro}")
+
     async with bloqueio_arquivo:
         eventos = carregar_eventos()
 
-    view = CalendarioView(
-        guild_id=ctx.guild.id,
-        eventos=eventos,
-        modo="dia",
-        dia=0
+    pagina_inicial = 0
+
+    tabela, detalhes, quantidade = montar_texto_calendario(
+        eventos,
+        ctx.guild.id,
+        pagina_inicial
     )
 
-    if not CAMINHO_IMAGEM_CALENDARIO.is_file():
-        await ctx.send(
-            "❌ Não encontrei `Imagens/calendario.png`. "
-            "Confira se o arquivo está na pasta correta."
-        )
-        return
+    view = CalendarioView(
+        ctx.guild.id,
+        pagina_inicial,
+        tabela,
+        detalhes,
+        quantidade
+    )
 
-    arquivo = discord.File(CAMINHO_IMAGEM_CALENDARIO, filename="calendario.png")
-    await ctx.send(view=view, file=arquivo)
-
+    await ctx.send(view=view)
 # ==========================================
 # COMANDO SLASH /MARCAR
 # ==========================================
