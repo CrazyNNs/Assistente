@@ -1198,6 +1198,8 @@ async def ping(ctx):
     """Verifica se o bot está funcionando."""
     await ctx.send("Pong! 🏓")
 
+@bot.command(name="calendario")
+@commands.guild_only()
 async def calendario(ctx):
     # Apaga a mensagem enviada pelo usuário para chamar o comando.
     try:
