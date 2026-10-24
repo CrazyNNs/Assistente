@@ -490,7 +490,7 @@ class CalendarioView(discord.ui.LayoutView):
         # fica em uma Section própria para continuar visível em todas as páginas.
         miniatura = discord.ui.Section(
             discord.ui.TextDisplay(" ‎ "),
-            accessory=discord.ui.Thumbnail(media="attachment://calendario.png", description="Calendário")
+            accessory=discord.ui.Thumbnail(media="attachment://Imagens/calendario.png", description="Calendário")
         )
 
 
@@ -1201,11 +1201,13 @@ async def ping(ctx):
 @bot.command(name="calendario")
 @commands.guild_only()
 async def calendario(ctx):
-    # Apaga a mensagem do comando.
     try:
         await ctx.message.delete()
     except discord.Forbidden:
-        print("Sem permissão para apagar a mensagem do comando.")
+        print(
+            "Sem permissão para apagar a mensagem "
+            "do comando calendario."
+        )
     except discord.NotFound:
         pass
     except discord.HTTPException as erro:
@@ -1214,20 +1216,11 @@ async def calendario(ctx):
     async with bloqueio_arquivo:
         eventos = carregar_eventos()
 
-    pagina_inicial = 0
-
-    tabela, detalhes, quantidade = montar_texto_calendario(
-        eventos,
-        ctx.guild.id,
-        pagina_inicial
-    )
-
     view = CalendarioView(
-        ctx.guild.id,
-        pagina_inicial,
-        tabela,
-        detalhes,
-        quantidade
+        guild_id=ctx.guild.id,
+        eventos=eventos,
+        modo="dia",
+        dia=0
     )
 
     await ctx.send(view=view)
