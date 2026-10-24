@@ -1201,18 +1201,15 @@ async def ping(ctx):
 @bot.command(name="calendario")
 @commands.guild_only()
 async def calendario(ctx):
-    # Apaga a mensagem enviada pelo usuário para chamar o comando.
+    # Apaga a mensagem do comando.
     try:
         await ctx.message.delete()
     except discord.Forbidden:
-        print(
-            "❌ Sem permissão para apagar a mensagem "
-            "do comando calendario."
-        )
+        print("Sem permissão para apagar a mensagem do comando.")
     except discord.NotFound:
         pass
     except discord.HTTPException as erro:
-        print(f"❌ Erro ao apagar o comando calendario: {erro}")
+        print(f"Erro ao apagar a mensagem: {erro}")
 
     async with bloqueio_arquivo:
         eventos = carregar_eventos()
