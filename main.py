@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 
 # ==========================================
-# CONFIGURAÇÕES --
+# CONFIGURAÇÕES 
 # ==========================================
 
 load_dotenv()
@@ -1258,7 +1258,7 @@ async def manual(ctx):
         description=(
             "✨ **Seus compromissos organizados. "
             "Seus lembretes no momento certo.**\n\n"
-            "Conheça o Assistente, seu aliado para organizar "
+            "Conheça a Assistente, sua aliada para organizar "
             "eventos e manter tudo sob controle, sem sair do Discord!"
         ),
         color=discord.Colour.blurple()
@@ -1286,8 +1286,8 @@ async def manual(ctx):
     embed.add_field(
         name="⚡┃ACESSE O PAINEL INTERATIVO",
         value=(
-            "Mencione o bot em uma mensagem para abrir o painel "
-            "do Assistente e acessar as opções de criação "
+            "Mencione a bot em uma mensagem para abrir o painel "
+            "da Assistente e acessar as opções de criação "
             "e consulta de eventos."
         ),
         inline=False
@@ -1296,12 +1296,11 @@ async def manual(ctx):
     embed.add_field(
         name="🔔┃NÃO PERCA SEUS COMPROMISSOS",
         value=(
-            "Cadastre seus eventos e deixe o Assistente ajudar "
+            "Cadastre seus eventos e deixe a Assistente ajudar "
             "você a se lembrar do que realmente importa!"
         ),
         inline=False
     )
-
 
     embed.set_image(url="attachment://AssistenteAnuncio.png")
 
