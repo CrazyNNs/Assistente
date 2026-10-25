@@ -1197,7 +1197,7 @@ async def on_ready():
 async def ping(ctx):
     """Verifica se o bot está funcionando."""
     await ctx.send("Pong! 🏓")
-
+# ==========================================
 @bot.command(name="calendario")
 @commands.guild_only()
 async def calendario(ctx):
@@ -1242,6 +1242,88 @@ async def calendario(ctx):
             view=view,
             delete_after=60
         )
+# =========================================
+
+@bot.command(name="manual")
+@commands.guild_only()
+async def manual(ctx):
+    """Publica o manual de apresentação do Assistente."""
+    try:
+        await ctx.message.delete()
+    except (discord.Forbidden, discord.NotFound):
+        pass
+
+    embed = discord.Embed(
+        title="🤖┃ASSISTENTE — SUA AGENDA NO DISCORD",
+        description=(
+            "✨ **Seus compromissos organizados. "
+            "Seus lembretes no momento certo.**\n\n"
+            "Conheça o Assistente, seu aliado para organizar "
+            "eventos e manter tudo sob controle, sem sair do Discord!"
+        ),
+        color=discord.Colour.blurple()
+    )
+
+    embed.add_field(
+        name="📝┃CRIE SEUS EVENTOS",
+        value=(
+            "Use **`/marcar`** para cadastrar compromissos "
+            "com data, horário, descrição, prioridade e "
+            "usuários que receberão lembretes."
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="📅┃CONSULTE SEU CALENDÁRIO",
+        value=(
+            "Digite **`A.calendario`** para abrir o calendário "
+            "e consultar os eventos organizados por dia."
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="⚡┃ACESSE O PAINEL INTERATIVO",
+        value=(
+            "Mencione o bot em uma mensagem para abrir o painel "
+            "do Assistente e acessar as opções de criação "
+            "e consulta de eventos."
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="🔔┃NÃO PERCA SEUS COMPROMISSOS",
+        value=(
+            "Cadastre seus eventos e deixe o Assistente ajudar "
+            "você a se lembrar do que realmente importa!"
+        ),
+        inline=False
+    )
+
+
+    embed.set_image(url="attachment://AssistenteAnuncio.png")
+
+    embed.set_footer(
+        text="Assistente • Organização e praticidade no Discord"
+    )
+
+    caminho_imagem = (
+        Path(__file__).parent
+        / "Imagens"
+        / "AssistenteAnuncio.png"
+    )
+
+    if caminho_imagem.is_file():
+        arquivo = discord.File(
+            caminho_imagem,
+            filename="AssistenteAnuncio.png"
+        )
+        await ctx.send(embed=embed, file=arquivo)
+    else:
+        print(f"Imagem do anúncio não encontrada: {caminho_imagem}")
+        await ctx.send(embed=embed)
 # ==========================================
 # COMANDO SLASH /MARCAR
 # ==========================================
