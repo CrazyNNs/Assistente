@@ -1228,13 +1228,20 @@ async def calendario(ctx):
             CAMINHO_IMAGEM_CALENDARIO,
             filename="calendario.png"
         )
-        await ctx.send(view=view, file=arquivo)
+        await ctx.send(
+            view=view,
+            file=arquivo,
+            delete_after=60
+        )
     else:
         print(
             f"Imagem não encontrada: "
             f"{CAMINHO_IMAGEM_CALENDARIO}"
         )
-        await ctx.send(view=view)
+        await ctx.send(
+            view=view,
+            delete_after=60
+        )
 # ==========================================
 # COMANDO SLASH /MARCAR
 # ==========================================
