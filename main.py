@@ -1079,6 +1079,13 @@ class BotaoVerCalendarioPeloPainel(discord.ui.Button):
         async with bloqueio_arquivo:
             eventos = carregar_eventos()
 
+        view = CalendarioView(
+            guild_id=interaction.guild_id,
+            eventos=eventos,
+            modo="dia",
+            dia=0
+        )
+
         if not CAMINHO_IMAGEM_CALENDARIO.is_file():
             await interaction.response.send_message(
                 "❌ Não encontrei `Imagens/calendario.png`.",
@@ -1090,14 +1097,7 @@ class BotaoVerCalendarioPeloPainel(discord.ui.Button):
             CAMINHO_IMAGEM_CALENDARIO,
             filename="calendario.png"
         )
-
-        view = CalendarioView(
-            guild_id=interaction.guild_id,
-            eventos=eventos,
-            modo="dia",
-            dia=0
-        )
-
+        
         await interaction.response.send_message(
             view=view,
             file=arquivo,
