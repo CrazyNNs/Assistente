@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 
 # ==========================================
-# CONFIGURAÇÕES -
+# CONFIGURAÇÕES --
 # ==========================================
 
 load_dotenv()
