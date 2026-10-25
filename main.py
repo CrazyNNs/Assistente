@@ -1212,32 +1212,31 @@ async def calendario(ctx):
         pass
     except discord.HTTPException as erro:
         print(f"Erro ao apagar a mensagem: {erro}")
-
-    async with bloqueio_arquivo:
-        eventos = carregar_eventos()
-
-    view = CalendarioView(
-        guild_id=ctx.guild.id,
-        eventos=eventos,
-        modo="dia",
-        dia=0
-    )
-
-caminho_imagem = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "Imagens",
-    "calendario.png"
-)
-
-if os.path.isfile(caminho_imagem):
-    arquivo = discord.File(
-        caminho_imagem,
-        filename="calendario.png"
-    )
-    await ctx.send(view=view, file=arquivo)
-else:
-    print(f"Imagem não encontrada: {caminho_imagem}")
-    await ctx.send(view=view)
+        
+        async with bloqueio_arquivo:
+            eventos = carregar_eventos()
+            
+            view = CalendarioView(
+                guild_id=ctx.guild.id,
+                eventos=eventos,
+                modo="dia",
+                dia=0
+            )
+            caminho_imagem = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "Imagens",
+                "calendario.png"
+            )
+            
+            if os.path.isfile(caminho_imagem):
+                arquivo = discord.File(
+                    caminho_imagem,
+                    filename="calendario.png"
+                )
+                await ctx.send(view=view, file=arquivo)
+            else:
+                print(f"Imagem não encontrada: {caminho_imagem}")
+                await ctx.send(view=view)
 # ==========================================
 # COMANDO SLASH /MARCAR
 # ==========================================
